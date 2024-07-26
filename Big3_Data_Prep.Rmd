@@ -3,7 +3,11 @@ title: "R Notebook"
 output: html_notebook
 ---
 
-Victoria-red
+The goal of this project is to investigate how partnerships involving multiple top-tier players in the NBA impacts various performance measures and team outcomes. Among the research questions we would like to explore are the following:
+
+*[ INSERT RESEARCH QUESTIONS HERE ]*
+
+To be able to investigate, we need to pull data from multiple NBA seasons. The script below provides code to create functions that pull traditional stats for every player for a given user-defined season.
 
 Load necessary libraries
 ```{r}
@@ -43,10 +47,27 @@ head(nba_roster)
 
 ```
 
+**ASSIGNMENT 1:** *Is the data "clean"? Are there any missing values to be accounted for/addressed? If there are any data quality issues,*
+
+ - *a. propose a method to resolve them*
+
+ - *b. justify the validity of your approach*
+
+ - *c. implement your proposed changes*
 
 
-Calculating Efficiency: (PTS + REB + AST + STL + BLK − Missed FG − Missed FT - TO) / GP.
 
+To determine whether a player is "top tier" and should be considered a part of a "Big 3" lineup, other authors have transformed traditional stats to create metrics such as
+
+PRA = POINTS + REBOUNDS + ASSISTS 
+
+We will consider advanced statisics such as PLAYER EFFIFIENCY RATING:
+
+PER = (PTS + REB + AST + STL + BLK − Missed FG − Missed FT - TO) / GP
+
+In particular, Value over Replacement (VORP) seems to do a solid job of identifying the best players in the league.
+
+The script below provide code to create functions that pull advanced stats for every player for a given user-defined season.
 ```{r}
 
 # Function to get NBA advanced stats for a specified year
@@ -78,24 +99,19 @@ head(nba_advanced_stats)
 
 
 ```
-```{r}
- advanced_stats_table <- nba_advanced_stats %>%
-    select(where(~ !any(is.na(.))))
 
-  advanced_stats_table <- advanced_stats_table %>%
-    mutate(across(c(MP, PER), as.numeric))
-  
-  # Filter the players whose MP is in the top 20% of the league
-  mp_threshold <- quantile(advanced_stats_table$MP, 0.80, na.rm = TRUE)
-  filtered_stats <- advanced_stats_table %>%
-    filter(MP >= mp_threshold)
-  
-  # Select the top 50 players with the best PER
-  top_50_per <- filtered_stats %>%
-    arrange(desc(PER)) %>%
-    slice_head(n = 50)
-  
-  return(top_50_per)
-  
-  ```
+**ASSIGNMENT 2:** *Is the advanced data "clean"? Are there any missing values to be accounted for/addressed? If there are any data quality issues,*
+
+ - *a. propose a method to resolve them*
+
+ - *b. justify the validity of your approach*
+
+ - *c. implement your proposed changes*
+
+**ASSIGNMENT 3:** *Merge the cleaned up datasets to create one new data frame with the traditional and advanced stats.*
+
+**ASSIGNMENT 4:** *Make a function with argument `year` that outputs one dataframe with the merged traditional and advanced data.* 
+
+**ASSIGNMENT 5:** *Make this file more visually appealng, with headers, bullet points, sections and subsections as you see fit. You may consider migrating over to Quarto for this reason.*
+
 
