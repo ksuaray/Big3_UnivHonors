@@ -1,0 +1,101 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Victoria-red
+
+Load necessary libraries
+```{r}
+library(rvest)
+library(dplyr)
+```
+
+Function to get NBA roster for a specified year
+```{r}
+get_nba_roster <- function(year) {
+  # Construct the URL for the specified year
+  url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, "_per_game.html")
+  
+  # Read the HTML content from the URL
+  webpage <- read_html(url)
+
+
+  # Extract the table containing the player statistics
+  roster_table <- webpage %>%
+    html_node("table#per_game_stats") %>%
+    html_table(fill = TRUE)
+  
+  # Clean the data (remove header rows that might be duplicated)
+  roster_table <- roster_table %>%
+    filter(Player != "Player")
+    return(roster_table)
+}
+```
+
+Example usage
+```{r}
+year <- 2023  # Specify the year
+nba_roster <- get_nba_roster(year)
+
+#Print the first few rows of the roster
+head(nba_roster)
+
+```
+
+
+
+Calculating Efficiency: (PTS + REB + AST + STL + BLK − Missed FG − Missed FT - TO) / GP.
+
+```{r}
+
+# Function to get NBA advanced stats for a specified year
+get_nba_advanced_stats <- function(year) {
+  # Construct the URL for the specified year
+  url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, "_advanced.html")
+  
+  # Read the HTML content from the URL
+  webpage <- read_html(url)
+  
+  # Extract the table containing the advanced player statistics
+  advanced_stats_table <- webpage %>%
+    html_node("table#advanced_stats") %>%
+    html_table(fill = TRUE)
+  
+  # Clean the data (remove header rows that might be duplicated)
+ # advanced_stats_table <- advanced_stats_table %>%
+  #  filter(Player != "Player")
+  
+  return(advanced_stats_table)
+}
+
+# Example usage
+year <- 2022  # Specify the year
+nba_advanced_stats <- get_nba_advanced_stats(year)
+
+# Print the first few rows of the advanced stats
+head(nba_advanced_stats)
+
+
+```
+```{r}
+ advanced_stats_table <- nba_advanced_stats %>%
+    select(where(~ !any(is.na(.))))
+
+  advanced_stats_table <- advanced_stats_table %>%
+    mutate(across(c(MP, PER), as.numeric))
+  
+  # Filter the players whose MP is in the top 20% of the league
+  mp_threshold <- quantile(advanced_stats_table$MP, 0.80, na.rm = TRUE)
+  filtered_stats <- advanced_stats_table %>%
+    filter(MP >= mp_threshold)
+  
+  # Select the top 50 players with the best PER
+  top_50_per <- filtered_stats %>%
+    arrange(desc(PER)) %>%
+    slice_head(n = 50)
+  
+  return(top_50_per)
+  
+  ```
+
