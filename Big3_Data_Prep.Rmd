@@ -63,7 +63,7 @@ PRA = POINTS + REBOUNDS + ASSISTS
 
 We will consider advanced statisics such as PLAYER EFFIFIENCY RATING:
 
-PER = (PTS + REB + AST + STL + BLK − Missed FG − Missed FT - TO) / GP
+PER = (PTS + REB + AST + STL + BLK − Missed FG − Missed FT - TO) /GP
 
 In particular, Value over Replacement (VORP) seems to do a solid job of identifying the best players in the league.
 
