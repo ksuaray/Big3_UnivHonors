@@ -48,6 +48,74 @@ head(nba_roster)
 tail(nba_roster)
 
 ```
+```{r}
+#Summary statistics
+
+position_roster<-filter(nba_roster,Pos!="PG" )
+```
+
+
+
+```{r}
+#Data Visualization for Minutes Played vs Points Scored
+input <- nba_roster[, c('MP', 'PTS')]
+print(head(input))
+
+# Get the input values.
+input <- nba_roster[, c('MP', 'PTS')]
+
+# Plot the chart for cars with
+# weight between 1.5 to 4 and
+# mileage between 10 and 25.
+plot(x = input$MP, y = input$PTS,
+	xlab = "Minutes Played",
+	ylab = "Points",
+	xlim = c(0.0, 48),
+	ylim = c(0.0, 35),	 
+	main = "Minutes Played vs Points Scored"
+)
+
+```
+```{r}
+#Data Visualization for Field Goals Attempled vs Field Goals Made
+input_2 <- nba_roster[, c('FGA', 'FG')]
+print(head(input_2))
+
+# Get the input values.
+input_2 <- nba_roster[, c('FGA', 'FG')]
+
+# Plot the chart for players with
+# field goal attempts between 0.0 to 25.0 and
+# Field Goal Made between 0.0 and 25.0
+plot(x = input_2$FGA, y = input_2$PTS,
+	xlab = "Field Goal Attempts",
+	ylab = "Field Goal Made",
+	xlim = c(0.0, 35.0),
+	ylim = c(0.0, 25.0),	 
+	main = "Field Goal Attempt vs Field Goal Made"
+)
+
+```
+
+
+```{r}
+# Create the data for the chart
+A <- c(nba_roster$PTS)
+B <- c("PF", "PG", "SF", "C", "SG")
+
+# Plot the bar chart
+ggplot(nba_roster, aes(x=Pos, fill=PTS))+  
+
+geom_bar()+  
+
+theme_classic(16)+  
+
+xlab("Position")+  
+
+ylab("Points") 
+
+```
+
 
 **ASSIGNMENT 1:** *Is the data "clean"? Are there any missing values to be accounted for/addressed? If there are any data quality issues,*
 
@@ -133,6 +201,28 @@ head(nba_advanced_stats)
  - *c. implement your proposed changes*
  
  cleaning similar to first one 
+ 
+ 
+ The script below provide code to clean out the quality issues presented in the dataframe
+ 
+ 
+ 
+```{r}
+#1 We want to order the athletes name to alphabetical order to clean out the filler headers present
+
+newdataframe<- dataframe[order(dataframe$Player)]
+
+#2 Now we want to remove the filler rows that had been used as headers on the webpage
+
+newdata.frame<-dataframe[-c(502:526), ]
+
+#3 now we want to remove all the N/As from the dataset
+dataframe %>% 
+  select(where(~!all(is.na(.))))
+```
+ 
+ 
+ 
 ```{r}
 
 #want to order by alphabetic name to make cleaning out the filler headers from the dataset
@@ -143,12 +233,19 @@ AO_nba_advanced_stats <- nba_advanced_stats[order(nba_advanced_stats$Player),]
 # remove filler rows that had been previously used as headers on webpage
 AO_nba_advanced_stats<- AO_nba_advanced_stats[-c(502:526), ]
 
-#remove "N/A" from dataset
+
+#remove na from dataframe
 AO_nba_advanced_stats %>% 
   select(where(~!all(is.na(.))))
-#change range of G to VORP to <dbl> from <chr>
+#removing column 20 and 25 from dataframe since theyre blanks
+AO_nba_advanced_stats<-AO_nba_advanced_stats[,-20]
+AO_nba_advanced_stats<-AO_nba_advanced_stats[,-24]
 
-updated_advanced_stats<-AO_nba_advanced_stats
+
+#change range of cloumns <dbl> from <chr>
+
+AO_nba_advanced_stats %>%
+   mutate(across(G:VORP, as.numeric))
 
 
 
@@ -157,7 +254,21 @@ updated_advanced_stats<-AO_nba_advanced_stats
 
 **ASSIGNMENT 3:** *Merge the cleaned up datasets to create one new data frame with the traditional and advanced stats.*
 
+```{r}
+#how to merge two files into one new data frame
+
+new_nba_stats<- rbind(nba_roster, AO_nba_advanced_stats)
+
+
+```
+
+
 **ASSIGNMENT 4:** *Make a function with argument `year` that outputs one dataframe with the merged traditional and advanced data.* 
+
+```{r}
+
+```
+
 
 **ASSIGNMENT 5:** *Make this file more visually appealng, with headers, bullet points, sections and subsections as you see fit. You may consider migrating over to Quarto for this reason.*
 
