@@ -249,23 +249,32 @@ AO_nba_advanced_stats %>%
 
 
 
+
 ```
 
 
 **ASSIGNMENT 3:** *Merge the cleaned up datasets to create one new data frame with the traditional and advanced stats.*
 
+
+
 ```{r}
 #how to merge two files into one new data frame
+nba_merge<-merge(nba_roster, AO_nba_advanced_stats, by.x = c("Rk", "Player", "Pos","Age", "Tm","G"), by.y = c("Rk", "Player", "Pos","Age", "Tm","G") , all.x = TRUE, all.y = TRUE)
 
-new_nba_stats<- rbind(nba_roster, AO_nba_advanced_stats)
 
-
+head(nba_merge)
 ```
 
 
 **ASSIGNMENT 4:** *Make a function with argument `year` that outputs one dataframe with the merged traditional and advanced data.* 
 
 ```{r}
+# Define the function
+nba_merge <- function(year) 
+  
+
+# Example usage
+nba_2023 <- nba_merge(2023)
 
 ```
 
