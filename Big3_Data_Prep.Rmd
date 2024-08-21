@@ -269,12 +269,104 @@ head(nba_merge)
 **ASSIGNMENT 4:** *Make a function with argument `year` that outputs one dataframe with the merged traditional and advanced data.* 
 
 ```{r}
-# Define the function
-nba_merge <- function(year) 
+get_nba_roster2 <- function(year) {
+  # Construct the URL for the specified year
+  url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, "_per_game.html")
   
+  # Read the HTML content from the URL
+  webpage <- read_html(url)
+
+
+  # Extract the table containing the player statistics
+  roster_table <- webpage %>%
+    html_node("table#per_game_stats") %>%
+    html_table(fill = TRUE)
+  
+  # Clean the data (remove header rows that might be duplicated)
+  roster_table <- roster_table %>%
+    filter(Player != "Player")
+    return(roster_table)
+}
+  
+  year <- 2023  # Specify the year
+nba_roster2 <- get_nba_roster2(year)
+
+#Print the first few rows of the roster
+head(nba_roster)
+tail(nba_roster)
+
+
+#take out the N/A 
+nba_roster2<-na.omit(nba_roster2)
+
+
+# Convert specific columns from character to double
+
+nba_roster2 %>%
+   mutate(across(G:PTS, as.numeric))
+
+#ADVANCED STATS
+
+# Function to get NBA advanced stats for a specified year
+get_nba_advanced_stats <- function(year) {
+  # Construct the URL for the specified year
+  url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, "_advanced.html")
+  
+  # Read the HTML content from the URL
+  webpage <- read_html(url)
+  
+  # Extract the table containing the advanced player statistics
+  advanced_stats_table <- webpage %>%
+    html_node("table#advanced_stats") %>%
+    html_table(fill = TRUE)
+  
+  # Clean the data (remove header rows that might be duplicated)
+ # advanced_stats_table <- advanced_stats_table %>%
+  #  filter(Player != "Player")
+  
+  return(advanced_stats_table)
+}
 
 # Example usage
-nba_2023 <- nba_merge(2023)
+year <- 2023  # Specify the year
+nba_advanced_stats2<- get_nba_advanced_stats(year)
+
+# Print the first few rows of the advanced stats
+head(nba_advanced_stats2)
+
+
+
+#want to order by alphabetic name to make cleaning out the filler headers from the dataset
+AO_nba_advanced_stats2<- nba_advanced_stats2[order(nba_advanced_stats2$Player),]
+
+
+
+
+
+#remove na from dataframe
+AO_nba_advanced_stats2 %>% 
+  select(where(~!all(is.na(.))))
+#removing column 20 and 25 from dataframe since theyre blanks
+AO_nba_advanced_stats2<-AO_nba_advanced_stats2[,-20]
+AO_nba_advanced_stats2<-AO_nba_advanced_stats2[,-24]
+
+
+# remove filler rows that had been previously used as headers on webpage
+
+
+AO_nba_advanced_stats2 <- AO_nba_advanced_stats2[AO_nba_advanced_stats2$Player != "Player",]
+
+AO_nba_advanced_stats2$Player <- factor(AO_nba_advanced_stats2$Player)
+
+
+
+
+#change range of cloumns <dbl> from <chr>
+
+AO_nba_advanced_stats2 %>%
+   mutate(across(G:VORP, as.numeric))
+
+
 
 ```
 
