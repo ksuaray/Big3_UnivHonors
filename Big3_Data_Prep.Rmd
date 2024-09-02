@@ -269,6 +269,8 @@ head(nba_merge)
 **ASSIGNMENT 4:** *Make a function with argument `year` that outputs one dataframe with the merged traditional and advanced data.* 
 
 ```{r}
+
+combined_nba_stats<-function(year){
 get_nba_roster2 <- function(year) {
   # Construct the URL for the specified year
   url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, "_per_game.html")
@@ -365,6 +367,10 @@ AO_nba_advanced_stats2$Player <- factor(AO_nba_advanced_stats2$Player)
 
 AO_nba_advanced_stats2 %>%
    mutate(across(G:VORP, as.numeric))
+   
+   nba_merge<-merge(nba_roster2, AO_nba_advanced_stats2, by.x = c("Rk", "Player", "Pos","Age", "Tm","G"), by.y = c("Rk", "Player", "Pos","Age", "Tm","G") , all.x = TRUE, all.y = TRUE)
+   
+}
 
 
 
