@@ -13,6 +13,7 @@ Load necessary libraries
 ```{r}
 library(rvest)
 library(dplyr)
+library(tidyverse)
 ```
 
 Function to get NBA roster for a specified year
@@ -39,29 +40,120 @@ get_nba_roster <- function(year) {
 
 Example usage
 ```{r}
-year <- 2023  # Specify the year
+year <- 2018  # Specify the year
 nba_roster <- get_nba_roster(year)
 
 #Print the first few rows of the roster
 head(nba_roster)
+tail(nba_roster)
 
 ```
+```{r}
+#Summary statistics
+
+position_roster<-filter(nba_roster,Pos!="PG" )
+```
+
+
+
+```{r}
+#Data Visualization for Minutes Played vs Points Scored
+input <- nba_roster[, c('MP', 'PTS')]
+print(head(input))
+
+# Get the input values.
+input <- nba_roster[, c('MP', 'PTS')]
+
+# Plot the chart for cars with
+# weight between 1.5 to 4 and
+# mileage between 10 and 25.
+plot(x = input$MP, y = input$PTS,
+	xlab = "Minutes Played",
+	ylab = "Points",
+	xlim = c(0.0, 48),
+	ylim = c(0.0, 35),	 
+	main = "Minutes Played vs Points Scored"
+)
+
+```
+```{r}
+#Data Visualization for Field Goals Attempled vs Field Goals Made
+input_2 <- nba_roster[, c('FGA', 'FG')]
+print(head(input_2))
+
+# Get the input values.
+input_2 <- nba_roster[, c('FGA', 'FG')]
+
+# Plot the chart for players with
+# field goal attempts between 0.0 to 25.0 and
+# Field Goal Made between 0.0 and 25.0
+plot(x = input_2$FGA, y = input_2$PTS,
+	xlab = "Field Goal Attempts",
+	ylab = "Field Goal Made",
+	xlim = c(0.0, 35.0),
+	ylim = c(0.0, 25.0),	 
+	main = "Field Goal Attempt vs Field Goal Made"
+)
+
+```
+
+
+```{r}
+# Create the data for the chart
+A <- c(nba_roster$PTS)
+B <- c("PF", "PG", "SF", "C", "SG")
+
+# Plot the bar chart
+ggplot(nba_roster, aes(x=Pos, fill=PTS))+  
+
+geom_bar()+  
+
+theme_classic(16)+  
+
+xlab("Position")+  
+
+ylab("Points") 
+
+```
+
 
 **ASSIGNMENT 1:** *Is the data "clean"? Are there any missing values to be accounted for/addressed? If there are any data quality issues,*
 
  - *a. propose a method to resolve them*
+       
+Initial thought to change the default character to double given that we have fractioned values. i think the columns should be changed from " chararcter" to "double" 
+
 
  - *b. justify the validity of your approach*
+removing observations with missing data from the dataset, using the function "na.omit" which will remove rows with missing values from our dataset
+
 
  - *c. implement your proposed changes*
 
 
+For players who are missing data
+```{r}
+nba_roster<-na.omit(nba_roster)
+
+nba_roster
+
+
+
+
+# Convert specific columns from character to double
+# Convert all character columns to double
+nba_roster %>%
+   mutate(across(G:PTS, as.numeric))
+
+
+
+```
 
 To determine whether a player is "top tier" and should be considered a part of a "Big 3" lineup, other authors have transformed traditional stats to create metrics such as
 
 PRA = POINTS + REBOUNDS + ASSISTS 
 
-We will consider advanced statisics such as PLAYER EFFIFIENCY RATING:
+We will consider advanced statistics such as PLAYER EFFIFIENCY RATING:
 
 PER = (PTS + REB + AST + STL + BLK − Missed FG − Missed FT - TO) /GP
 
@@ -91,7 +183,7 @@ get_nba_advanced_stats <- function(year) {
 }
 
 # Example usage
-year <- 2022  # Specify the year
+year <- 2018  # Specify the year
 nba_advanced_stats <- get_nba_advanced_stats(year)
 
 # Print the first few rows of the advanced stats
@@ -107,10 +199,183 @@ head(nba_advanced_stats)
  - *b. justify the validity of your approach*
 
  - *c. implement your proposed changes*
+ 
+ cleaning similar to first one 
+ 
+ 
+ The script below provide code to clean out the quality issues presented in the dataframe
+ 
+ 
+ 
+```{r}
+#1 We want to order the athletes name to alphabetical order to clean out the filler headers present
+
+newdataframe<- dataframe[order(dataframe$Player)]
+
+#2 Now we want to remove the filler rows that had been used as headers on the webpage
+
+newdata.frame<-dataframe[-c(502:526), ]
+
+#3 now we want to remove all the N/As from the dataset
+dataframe %>% 
+  select(where(~!all(is.na(.))))
+```
+ 
+ 
+ 
+```{r}
+
+#want to order by alphabetic name to make cleaning out the filler headers from the dataset
+AO_nba_advanced_stats <- nba_advanced_stats[order(nba_advanced_stats$Player),]
+
+
+
+# remove filler rows that had been previously used as headers on webpage
+AO_nba_advanced_stats<- AO_nba_advanced_stats[-c(502:526), ]
+
+
+#remove na from dataframe
+AO_nba_advanced_stats %>% 
+  select(where(~!all(is.na(.))))
+#removing column 20 and 25 from dataframe since theyre blanks
+AO_nba_advanced_stats<-AO_nba_advanced_stats[,-20]
+AO_nba_advanced_stats<-AO_nba_advanced_stats[,-24]
+
+
+#change range of cloumns <dbl> from <chr>
+
+AO_nba_advanced_stats %>%
+   mutate(across(G:VORP, as.numeric))
+
+
+
+
+```
+
 
 **ASSIGNMENT 3:** *Merge the cleaned up datasets to create one new data frame with the traditional and advanced stats.*
 
+
+
+```{r}
+#how to merge two files into one new data frame
+nba_merge<-merge(nba_roster, AO_nba_advanced_stats, by.x = c("Rk", "Player", "Pos","Age", "Tm","G"), by.y = c("Rk", "Player", "Pos","Age", "Tm","G") , all.x = TRUE, all.y = TRUE)
+
+
+head(nba_merge)
+```
+
+
 **ASSIGNMENT 4:** *Make a function with argument `year` that outputs one dataframe with the merged traditional and advanced data.* 
+
+```{r}
+
+combined_nba_stats<-function(year){
+get_nba_roster2 <- function(year) {
+  # Construct the URL for the specified year
+  url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, "_per_game.html")
+  
+  # Read the HTML content from the URL
+  webpage <- read_html(url)
+
+
+  # Extract the table containing the player statistics
+  roster_table <- webpage %>%
+    html_node("table#per_game_stats") %>%
+    html_table(fill = TRUE)
+  
+  # Clean the data (remove header rows that might be duplicated)
+  roster_table <- roster_table %>%
+    filter(Player != "Player")
+    return(roster_table)
+}
+  
+  year <- 2023  # Specify the year
+nba_roster2 <- get_nba_roster2(year)
+
+#Print the first few rows of the roster
+head(nba_roster)
+tail(nba_roster)
+
+
+#take out the N/A 
+nba_roster2<-na.omit(nba_roster2)
+
+
+# Convert specific columns from character to double
+
+nba_roster2 %>%
+   mutate(across(G:PTS, as.numeric))
+
+#ADVANCED STATS
+
+# Function to get NBA advanced stats for a specified year
+get_nba_advanced_stats <- function(year) {
+  # Construct the URL for the specified year
+  url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, "_advanced.html")
+  
+  # Read the HTML content from the URL
+  webpage <- read_html(url)
+  
+  # Extract the table containing the advanced player statistics
+  advanced_stats_table <- webpage %>%
+    html_node("table#advanced_stats") %>%
+    html_table(fill = TRUE)
+  
+  # Clean the data (remove header rows that might be duplicated)
+ # advanced_stats_table <- advanced_stats_table %>%
+  #  filter(Player != "Player")
+  
+  return(advanced_stats_table)
+}
+
+# Example usage
+year <- 2023  # Specify the year
+nba_advanced_stats2<- get_nba_advanced_stats(year)
+
+# Print the first few rows of the advanced stats
+head(nba_advanced_stats2)
+
+
+
+#want to order by alphabetic name to make cleaning out the filler headers from the dataset
+AO_nba_advanced_stats2<- nba_advanced_stats2[order(nba_advanced_stats2$Player),]
+
+
+
+
+
+#remove na from dataframe
+AO_nba_advanced_stats2 %>% 
+  select(where(~!all(is.na(.))))
+#removing column 20 and 25 from dataframe since theyre blanks
+AO_nba_advanced_stats2<-AO_nba_advanced_stats2[,-20]
+AO_nba_advanced_stats2<-AO_nba_advanced_stats2[,-24]
+
+
+# remove filler rows that had been previously used as headers on webpage
+
+
+AO_nba_advanced_stats2 <- AO_nba_advanced_stats2[AO_nba_advanced_stats2$Player != "Player",]
+
+AO_nba_advanced_stats2$Player <- factor(AO_nba_advanced_stats2$Player)
+
+
+
+
+#change range of cloumns <dbl> from <chr>
+
+AO_nba_advanced_stats2 %>%
+   mutate(across(G:VORP, as.numeric))
+   
+   nba_merge<-merge(nba_roster2, AO_nba_advanced_stats2, by.x = c("Rk", "Player", "Pos","Age", "Tm","G"), by.y = c("Rk", "Player", "Pos","Age", "Tm","G") , all.x = TRUE, all.y = TRUE)
+   
+}
+
+
+
+```
+
 
 **ASSIGNMENT 5:** *Make this file more visually appealng, with headers, bullet points, sections and subsections as you see fit. You may consider migrating over to Quarto for this reason.*
 
