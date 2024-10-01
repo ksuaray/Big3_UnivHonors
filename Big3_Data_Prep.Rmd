@@ -52,10 +52,35 @@ tail(nba_roster)
 #Summary statistics
 
 position_roster<-filter(nba_roster,Pos!="PG" )
+position_roster
 ```
 
 
 
+```{r}
+
+library(plotly)
+
+# Assuming 'nba_roster' is your data frame
+input <- nba_roster[, c('MP', 'PTS', 'Player','Pos')]
+
+# Create the plotly scatter plot
+fig <- plot_ly(input, x = ~MP, y = ~PTS, type = 'scatter', mode = 'markers',
+               text = ~Player,  # This adds player names on hover
+               hoverinfo = 'text', # Ensures that only player names appear on hover
+               color = ~Pos,  # Colors points based on position
+               marker = list(size = 10))
+
+# Set the plot title and axis labels
+fig <- fig %>% layout(title = "Minutes Played vs Points Scored",
+                      xaxis = list(title = "Minutes Played", range = c(0, 48)),
+                      yaxis = list(title = "Points", range = c(0, 35)))
+
+# Show the plot
+fig
+
+
+```
 ```{r}
 #Data Visualization for Minutes Played vs Points Scored
 input <- nba_roster[, c('MP', 'PTS')]
@@ -76,6 +101,8 @@ plot(x = input$MP, y = input$PTS,
 )
 
 ```
+
+
 ```{r}
 #Data Visualization for Field Goals Attempled vs Field Goals Made
 input_2 <- nba_roster[, c('FGA', 'FG')]
@@ -86,16 +113,20 @@ input_2 <- nba_roster[, c('FGA', 'FG')]
 
 # Plot the chart for players with
 # field goal attempts between 0.0 to 25.0 and
+b_FG<-max(input_2$FG,na.rm=T)
+b_FGA<-max(input_2$FGA,na.rm=T)
 # Field Goal Made between 0.0 and 25.0
-plot(x = input_2$FGA, y = input_2$PTS,
+plot(x = input_2$FGA, y = input_2$FG,
 	xlab = "Field Goal Attempts",
 	ylab = "Field Goal Made",
-	xlim = c(0.0, 35.0),
-	ylim = c(0.0, 25.0),	 
+	xlim = c(0.0, b_FGA),
+	ylim = c(0.0, b_FG),	 
 	main = "Field Goal Attempt vs Field Goal Made"
 )
 
+
 ```
+
 
 
 ```{r}

@@ -1,0 +1,378 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(rvest)
+library(dplyr)
+library(tidyverse)
+library(plotly)
+```
+
+Function to get NBA roster for a specified year
+```{r}
+get_nba_roster <- function(year) {
+  # Construct the URL for the specified year
+  url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, "_per_game.html")
+  
+  # Read the HTML content from the URL
+  webpage <- read_html(url)
+
+
+  # Extract the table containing the player statistics
+  roster_table <- webpage %>%
+    html_node("table#per_game_stats") %>%
+    html_table(fill = TRUE)
+  
+  roster_table <- roster_table[-which(roster_table$Player=='League Average'),]
+  # Clean the data (remove header rows that might be duplicated)
+  roster_table <- roster_table %>%
+    filter(Player != "Player")
+    return(roster_table)
+}
+```
+
+
+
+```{r}
+
+# Function to get NBA advanced stats for a specified year
+get_nba_advanced_stats <- function(year) {
+  # Construct the URL for the specified year
+  url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, "_advanced.html")
+  
+  # Read the HTML content from the URL
+  webpage <- read_html(url)
+  
+  # Extract the table containing the advanced player statistics
+  advanced_stats_table <- webpage %>%
+    html_node("table#advanced_stats") %>%
+    html_table(fill = TRUE)
+  
+  # Clean the data (remove header rows that might be duplicated)
+ # advanced_stats_table <- advanced_stats_table %>%
+  #  filter(Player != "Player")
+  
+  return(advanced_stats_table)
+}
+
+# Example usage
+year <- 2018  # Specify the year
+nba_advanced_stats <- get_nba_advanced_stats(year)
+
+# Print the first few rows of the advanced stats
+head(nba_advanced_stats)
+
+
+```
+
+```{r}
+
+combined_nba_stats<-function(year){
+get_nba_roster2 <- function(year) {
+  # Construct the URL for the specified year
+  url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, "_per_game.html")
+  
+  # Read the HTML content from the URL
+  webpage <- read_html(url)
+
+
+  # Extract the table containing the player statistics
+  roster_table <- webpage %>%
+    html_node("table#per_game_stats") %>%
+    html_table(fill = TRUE)
+  
+  # Clean the data (remove header rows that might be duplicated)
+  roster_table <- roster_table %>%
+    filter(Player != "Player")
+    return(roster_table)
+}
+  
+  year <- 2023  # Specify the year
+nba_roster2 <- get_nba_roster2(year)
+
+#Print the first few rows of the roster
+head(nba_roster)
+tail(nba_roster)
+
+
+#take out the N/A 
+nba_roster2<-na.omit(nba_roster2)
+
+
+# Convert specific columns from character to double
+
+nba_roster2 %>%
+   mutate(across(G:PTS, as.numeric))
+
+#ADVANCED STATS
+
+# Function to get NBA advanced stats for a specified year
+get_nba_advanced_stats <- function(year) {
+  # Construct the URL for the specified year
+  url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, "_advanced.html")
+  
+  # Read the HTML content from the URL
+  webpage <- read_html(url)
+  
+  # Extract the table containing the advanced player statistics
+  advanced_stats_table <- webpage %>%
+    html_node("table#advanced_stats") %>%
+    html_table(fill = TRUE)
+  
+  # Clean the data (remove header rows that might be duplicated)
+ # advanced_stats_table <- advanced_stats_table %>%
+  #  filter(Player != "Player")
+  
+  return(advanced_stats_table)
+}
+
+# Example usage
+year <- 2023  # Specify the year
+nba_advanced_stats2<- get_nba_advanced_stats(year)
+
+# Print the first few rows of the advanced stats
+head(nba_advanced_stats2)
+
+
+
+#want to order by alphabetic name to make cleaning out the filler headers from the dataset
+AO_nba_advanced_stats2<- nba_advanced_stats2[order(nba_advanced_stats2$Player),]
+
+
+
+
+
+#remove na from dataframe
+AO_nba_advanced_stats2 %>% 
+  select(where(~!all(is.na(.))))
+#removing column 20 and 25 from dataframe since theyre blanks
+AO_nba_advanced_stats2<-AO_nba_advanced_stats2[,-20]
+AO_nba_advanced_stats2<-AO_nba_advanced_stats2[,-24]
+
+
+# remove filler rows that had been previously used as headers on webpage
+
+
+AO_nba_advanced_stats2 <- AO_nba_advanced_stats2[AO_nba_advanced_stats2$Player != "Player",]
+
+AO_nba_advanced_stats2$Player <- factor(AO_nba_advanced_stats2$Player)
+
+
+
+
+#change range of cloumns <dbl> from <chr>
+
+AO_nba_advanced_stats2 %>%
+   mutate(across(G:VORP, as.numeric))
+   
+   nba_merge<-merge(nba_roster2, AO_nba_advanced_stats2, by.x = c("Rk", "Player", "Pos","Age", "Tm","G"), by.y = c("Rk", "Player", "Pos","Age", "Tm","G") , all.x = TRUE, all.y = TRUE)
+   
+}
+
+
+
+```
+
+
+
+Example usage
+
+```{r}
+year <- 2018  # Specify the year
+nba_roster <- combined_nba_stats(year)
+
+#Print the first few rows of the roster
+head(nba_roster)
+tail(nba_roster)
+
+```
+
+```{r}
+year <- 1980  # Specify the year
+nba_roster <- get_nba_roster(year)
+
+#Print the first few rows of the roster
+head(nba_roster)
+tail(nba_roster)
+
+```
+
+```{r}
+nba_roster1<-nba_roster
+nba_roster1$SGS<-nba_roster1$PTS+nba_roster1$TRB+nba_roster1$AST
+nba_roster1$SGSind<-nba_roster1$SGS>24.3
+head(nba_roster1)
+
+```
+
+
+
+```{r}
+mean(nba_roster1$SGS>24.3,na.rm=T)
+```
+
+
+
+```{r}
+#Summary statistics
+
+position_roster<-filter(nba_roster,Pos!="PG" )
+position_roster
+```
+
+```{r}
+
+# Assuming 'nba_roster' is your data frame
+input <- nba_roster1[, c('MP', 'PTS', 'Player','Pos','SGS','SGSind')]
+input <- na.omit(input)
+# Create the plotly scatter plot
+fig <- plot_ly(input, x = ~MP, y = ~PTS, type = 'scatter', mode = 'markers',
+               text = ~Player,  # This adds player names on hover
+               hoverinfo = c('text',~MP), # Ensures that player names and data appear on hover
+               color = ~SGSind,
+               colors = c('green','red'),  # Colors points based on position
+               marker = list(size = 10))
+
+# Set the plot title and axis labels
+fig <- fig %>% layout(title = "Minutes Played vs Points Scored",
+                      xaxis = list(title = "Minutes Played", range = c(0, 48)),
+                      yaxis = list(title = "Points", range = c(0, 35)))
+
+fit<-lm(PTS~poly(MP,2),data=input)
+
+# Add the best fit line to the plot
+fig <- fig %>% add_lines(x = ~MP, 
+                         y = fitted(fit), 
+                         line = list(color = 'black'),
+                         name = 'Best Fit Line')
+
+# Show the plot
+fig
+
+saveWidget(fig, "MinPlayed_vs_PointScored.html")
+
+```
+
+
+```{r}
+#Data Visualization for Field Goals Attempled vs Field Goals Made
+
+# Get the input values.
+input_2 <- nba_roster1[, c('Player', 'MP', 'FGA', 'FG', 'SGS', 'SGSind')]
+
+#input_2 <- na.omit(input_2)
+# Set limits based on the data
+b_FG <- max(input_2$FG, na.rm = TRUE)
+b_FGA <- max(input_2$FGA, na.rm = TRUE)
+
+# Create the plotly scatter plot
+fig <- plot_ly(data = input_2, 
+               x = ~FGA, 
+               y = ~FG, 
+               type = 'scatter', 
+               mode = 'markers',
+               marker = list(size = 10),
+               text=~Player,
+               hoverinfo = c('text',~MP), # Ensures that player names and data appear on hover
+               color = ~SGSind,
+               colors = c('green','red'))
+
+# Customize the layout
+fig <- fig %>% layout(title = 'Field Goal Attempts vs Field Goals Made',
+                      xaxis = list(title = 'Field Goal Attempts', range = c(0.0, b_FGA)),
+                      yaxis = list(title = 'Field Goals Made', range = c(0.0, b_FG)))
+
+fit<-lm(FG~FGA,data=input_2)
+
+# Add the best fit line to the plot
+fig <- fig %>% add_lines(x = ~FGA, 
+                         y = fitted(fit), 
+                         line = list(color = 'black'),
+                         name = 'Best Fit Line')
+
+# Display the plot
+fig
+
+saveWidget(fig, "FGA_vs_FGMade.html")
+```
+
+
+```{r}
+
+# Assuming 'nba_roster' is your data frame
+input <- nba_roster1[, c('MP', 'PTS', 'Player','Pos','SGS','SGSind')]
+#input <- na.omit(input)
+
+input_3 <- na.omit(input)
+# Set limits based on the data
+b_SGS <- max(input_2$SGS, na.rm = TRUE)+5
+
+# Create the plotly scatter plot
+fig <- plot_ly(input, x = ~MP, y = ~SGS, type = 'scatter', mode = 'markers',
+               text = ~Player,  # This adds player names on hover
+               hoverinfo = c('text',~SGS), # Ensures that player names and data appear on hover
+               color = ~SGSind,
+               colors = c('green','red'),  # Colors points based on position
+               marker = list(size = 10))
+
+# Set the plot title and axis labels
+fig <- fig %>% layout(title = "Minutes Played vs Simple Game Score",
+                      xaxis = list(title = "Minutes Played", range = c(0, 48)),
+                      yaxis = list(title = "Simple Game Score", range = c(0, b_SGS)))
+
+#fit<-lm(SGS~poly(MP,2),data=input)
+
+# Add the best fit line to the plot
+#fig <- fig %>% add_lines(x = ~MP, 
+ #                        y = fitted(fit), 
+  #                       line = list(color = 'black'),
+   #                      name = 'Best Fit Line')
+
+# Show the plot
+fig
+
+#saveWidget(fig, "MinPlayed_vs_SimpleGameScore.html")
+
+
+```
+
+
+
+
+```{r}
+summary(lm(FG~FGA,data=nba_roster1))
+```
+```{r}
+nba_roster1E<-nba_roster1[which(nba_roster1$SGSind==T),]
+summary(lm(FG~FGA,data=nba_roster1E))
+```
+```{r}
+nba_roster1NE<-nba_roster1[which(nba_roster1$SGSind==F),]
+summary(lm(FG~FGA,data=nba_roster1NE))
+```
+
+
+```{r}
+gg <- ggplot(data = nba_roster1 ) +  
+ geom_density(aes(x=FG)) + geom_density(aes(x=FG, color=SGSind)) + geom_rug(aes(x=FG, color=SGSind)) + 
+  ylab("") + 
+  xlab("")
+
+ggplotly(gg)%>% 
+  layout(plot_bgcolor='#e5ecf6',   
+             xaxis = list(   
+               title='Time', 
+               zerolinecolor = '#ffff',   
+               zerolinewidth = 2,   
+               gridcolor = 'ffff'),   
+             yaxis = list(   
+               title='Value A', 
+               zerolinecolor = '#ffff',   
+               zerolinewidth = 2,   
+               gridcolor = 'ffff'),
+         title = 'Curve and Rug Plot') 
+```
+
