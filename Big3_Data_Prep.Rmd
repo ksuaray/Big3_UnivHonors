@@ -345,9 +345,8 @@ if (is.character(nba_advanced_stats2$Player) || is.factor(nba_advanced_stats2$Pl
 ```
 
 ```{r}
-# Load necessary libraries
-library(rvest)
 library(dplyr)
+library(rvest)
 
 # Function to get NBA roster and advanced stats for a specified year and return a cleaned merged dataset
 get_cleaned_nba_stats <- function(year) {
@@ -362,12 +361,6 @@ get_cleaned_nba_stats <- function(year) {
     
     # Clean up column names
     colnames(roster_table) <- make.names(colnames(roster_table), unique = TRUE)
-    
-    # Print the structure and column names for debugging
-    print("Per Game Stats Table:")
-    print(str(roster_table))  # Show structure of the data frame
-    print("Per Game Stats Column Names:")
-    print(colnames(roster_table))
     
     # Filter and clean the data
     roster_table <- roster_table %>%
@@ -387,12 +380,6 @@ get_cleaned_nba_stats <- function(year) {
     # Clean up column names
     colnames(advanced_stats_table) <- make.names(colnames(advanced_stats_table), unique = TRUE)
     
-    # Print the structure and column names for debugging
-    print("Advanced Stats Table:")
-    print(str(advanced_stats_table))  # Show structure of the data frame
-    print("Advanced Stats Column Names:")
-    print(colnames(advanced_stats_table))
-    
     # Filter and clean the data
     advanced_stats_table <- advanced_stats_table %>%
       filter(!is.na(Player) & Player != "Player") # Ensure no NA or duplicate header rows
@@ -404,26 +391,33 @@ get_cleaned_nba_stats <- function(year) {
   nba_roster2 <- get_nba_roster2(year)
   nba_advanced_stats2 <- get_nba_advanced_stats(year)
 
-  # Check for available columns to merge
+  # Merge the datasets on common columns
   merge_columns <- c("Rk", "Player", "Pos", "Age", "Tm", "G")
-  
-  # Print columns to be used for merging
-  print("Columns to merge on:")
-  print(merge_columns)
-
-  # Check if the columns exist in both data frames
   available_columns <- intersect(merge_columns, colnames(nba_roster2))
   available_columns <- intersect(available_columns, colnames(nba_advanced_stats2))
 
-  # Print available columns for merging
-  print("Available columns for merging:")
-  print(available_columns)
-
-  # Merge the two datasets by matching available columns
   if (length(available_columns) > 0) {
     nba_merge <- merge(nba_roster2, nba_advanced_stats2, 
                        by = available_columns, 
                        all.x = TRUE, all.y = TRUE)
+    
+    # Combine "Tm" and "Team" into one column
+    nba_merge <- nba_merge %>%
+      mutate(Team = coalesce(Tm, Team)) %>%   # Coalesce merges both columns into one
+      select(-Tm)                             # Remove the old "Tm" column
+    
+    # Remove the "X" and "X.1" columns if they exist
+    nba_merge <- nba_merge %>%
+      select(-one_of(c("X", "X.1")))          # Remove both "X" and "X.1" columns
+
+    # Remove players with multiple teams ("2Tm", "3Tm", etc.)
+    nba_merge <- nba_merge %>%
+      filter(!grepl("Tm", Team))
+
+    # Add a new column "VORP+PER" that sums VORP and PER
+    nba_merge <- nba_merge %>%
+      mutate(VORP_PER = as.numeric(VORP) + as.numeric(PER)) # Convert to numeric and sum
+    
     return(nba_merge)
   } else {
     stop("Error: No valid columns to merge.")
@@ -434,7 +428,7 @@ get_cleaned_nba_stats <- function(year) {
 nba_data_2023 <- get_cleaned_nba_stats(2023)
 
 # View the first few rows of the cleaned dataset
-head(cleaned_nba_data)
+head(nba_data_2023)
 
 
 ```
@@ -442,10 +436,20 @@ head(cleaned_nba_data)
 
 ```{r}
 nba_data_2022 <-get_cleaned_nba_stats(2022)
-
+nba_data_2010 <-get_cleaned_nba_stats(2010)
+nba_data_2015 <-get_cleaned_nba_stats(2015)
 ```
 
 
 **ASSIGNMENT 5:** *Make this file more visually appealng, with headers, bullet points, sections and subsections as you see fit. You may consider migrating over to Quarto for this reason.*
 
+
+
+```{r}
+# Save your dataframe as a CSV file
+write.csv(nba_roster2, file = "generalstats.csv", row.names = FALSE)
+write.csv(AO_nba_advanced_stats2, file = "advancedstats.csv", row.names = FALSE)
+getwd()
+
+```
 
