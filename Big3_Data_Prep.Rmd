@@ -274,154 +274,70 @@ head(nba_merge)
 library(rvest)
 library(dplyr)
 
+# Function to get NBA roster stats for a specified year
+get_nba_roster2 <- function(year) {
+  url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, "_per_game.html")
+  webpage <- read_html(url)
+  roster_table <- webpage %>%
+    html_node("table#per_game_stats") %>%
+    html_table(fill = TRUE)
+  
+  # Clean up column names
+  colnames(roster_table) <- make.names(colnames(roster_table), unique = TRUE)
+  
+  # Clean the data
+  roster_table <- roster_table %>%
+    filter(!is.na(Player) & Player != "Player") # Ensure no NA or duplicate header rows
+  
+  return(roster_table)
+}
+
 # Function to get NBA advanced stats for a specified year
 get_nba_advanced_stats <- function(year) {
-  # Construct the URL for the specified year
   url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, "_advanced.html")
-  
-  # Read the HTML content from the URL
   webpage <- read_html(url)
-  
-  # Extract the table containing the advanced player statistics
   advanced_stats_table <- webpage %>%
     html_node("table#advanced_stats") %>%
     html_table(fill = TRUE)
   
-  # Inspect the structure of the table
-  print("Column names in the scraped table:")
-  print(colnames(advanced_stats_table))
-  
-  # Show the first few rows of the table to ensure it's correct
-  print("First few rows of the scraped table:")
-  print(head(advanced_stats_table))
-  
-  # Rename columns to handle missing column names
+  # Clean up column names
   colnames(advanced_stats_table) <- make.names(colnames(advanced_stats_table), unique = TRUE)
   
-  # Check if 'Player' column exists after renaming
-  if (!"Player" %in% colnames(advanced_stats_table)) {
-    print("Error: The 'Player' column does not exist.")
-    print("Column names after renaming:")
-    print(colnames(advanced_stats_table))
-  } else {
-    print("Success: The 'Player' column exists!")
-  }
-  
-  # Clean the data (remove header rows that might be duplicated)
+  # Clean the data
   advanced_stats_table <- advanced_stats_table %>%
-    filter(!is.na(Player) & Player != "Player") # Ensure Player column is valid
+    filter(!is.na(Player) & Player != "Player") # Ensure no NA or duplicate header rows
   
   return(advanced_stats_table)
 }
 
-# Specify the year
-year <- 2023
-
-# Get the NBA advanced stats for the specified year
-nba_advanced_stats2 <- get_nba_advanced_stats(year)
-
-# Print the first few rows to verify data is loaded correctly
-head(nba_advanced_stats2)
-
-# Ensure 'Player' column exists and is a valid vector before ordering
-if (!"Player" %in% colnames(nba_advanced_stats2)) {
-  stop("Error: The 'Player' column does not exist after filtering.")
-} else if (!is.vector(nba_advanced_stats2$Player)) {
-  stop("Error: The 'Player' column is not a vector.")
-} else {
-  print("The 'Player' column exists and is a valid vector.")
-}
-
-# Order by Player name (assuming Player is a character or factor vector)
-if (is.character(nba_advanced_stats2$Player) || is.factor(nba_advanced_stats2$Player)) {
-  nba_advanced_stats2 <- nba_advanced_stats2[order(nba_advanced_stats2$Player), ]
-} else {
-  stop("The 'Player' column is not a character or factor vector and cannot be ordered.")
-}
-
-# Continue with data cleaning and merging...
-
-
-```
-
-```{r}
-library(dplyr)
-library(rvest)
-
-# Function to get NBA roster and advanced stats for a specified year and return a cleaned merged dataset
+# Function to merge NBA roster and advanced stats for a specified year
 get_cleaned_nba_stats <- function(year) {
-
-  # Helper function to get per-game stats
-  get_nba_roster2 <- function(year) {
-    url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, "_per_game.html")
-    webpage <- read_html(url)
-    roster_table <- webpage %>%
-      html_node("table#per_game_stats") %>%
-      html_table(fill = TRUE)
-    
-    # Clean up column names
-    colnames(roster_table) <- make.names(colnames(roster_table), unique = TRUE)
-    
-    # Filter and clean the data
-    roster_table <- roster_table %>%
-      filter(!is.na(Player) & Player != "Player") # Ensure no NA or duplicate header rows
-    
-    return(roster_table)
-  }
-
-  # Helper function to get advanced stats
-  get_nba_advanced_stats <- function(year) {
-    url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, "_advanced.html")
-    webpage <- read_html(url)
-    advanced_stats_table <- webpage %>%
-      html_node("table#advanced_stats") %>%
-      html_table(fill = TRUE)
-    
-    # Clean up column names
-    colnames(advanced_stats_table) <- make.names(colnames(advanced_stats_table), unique = TRUE)
-    
-    # Filter and clean the data
-    advanced_stats_table <- advanced_stats_table %>%
-      filter(!is.na(Player) & Player != "Player") # Ensure no NA or duplicate header rows
-    
-    return(advanced_stats_table)
-  }
-
-  # Fetch per-game stats and advanced stats for the specified year
   nba_roster2 <- get_nba_roster2(year)
   nba_advanced_stats2 <- get_nba_advanced_stats(year)
-
-  # Merge the datasets on common columns
-  merge_columns <- c("Rk", "Player", "Pos", "Age", "Tm", "G")
-  available_columns <- intersect(merge_columns, colnames(nba_roster2))
-  available_columns <- intersect(available_columns, colnames(nba_advanced_stats2))
-
-  if (length(available_columns) > 0) {
-    nba_merge <- merge(nba_roster2, nba_advanced_stats2, 
-                       by = available_columns, 
-                       all.x = TRUE, all.y = TRUE)
-    
-    # Combine "Tm" and "Team" into one column
+  
+  # Check for the columns in both datasets before merging
+  common_columns <- intersect(names(nba_roster2), names(nba_advanced_stats2))
+  
+  # Merge the datasets on common columns such as "Player", "Pos", "Age", "G", "MP"
+  nba_merge <- merge(nba_roster2, nba_advanced_stats2, by = c("Player", "Pos", "Age", "G", "MP"), all.x = TRUE, all.y = TRUE)
+  
+  # Ensure there is a "Tm" column in the merged data
+  if ("Tm" %in% names(nba_merge)) {
+    # Remove any rows with multi-team entries like "2Tm", "3Tm", etc.
     nba_merge <- nba_merge %>%
-      mutate(Team = coalesce(Tm, Team)) %>%   # Coalesce merges both columns into one
-      select(-Tm)                             # Remove the old "Tm" column
-    
-    # Remove the "X" and "X.1" columns if they exist
+      filter(!grepl("Tm", Tm))
+  } else if ("Tm.x" %in% names(nba_merge) & "Tm.y" %in% names(nba_merge)) {
+    # If Tm.x and Tm.y exist after the merge, combine them into one "Team" column
     nba_merge <- nba_merge %>%
-      select(-one_of(c("X", "X.1")))          # Remove both "X" and "X.1" columns
-
-    # Remove players with multiple teams ("2Tm", "3Tm", etc.)
-    nba_merge <- nba_merge %>%
-      filter(!grepl("Tm", Team))
-
-    # Add a new column "VORP+PER" that sums VORP and PER
-    nba_merge <- nba_merge %>%
-      mutate(VORP_PER = as.numeric(VORP) + as.numeric(PER)) # Convert to numeric and sum
-    
-    return(nba_merge)
-  } else {
-    stop("Error: No valid columns to merge.")
+      mutate(Team = coalesce(Tm.x, Tm.y)) %>%  # Coalesce merges both columns into one
+      select(-Tm.x, -Tm.y)                     # Remove the old "Tm" columns
   }
+  
+  # Add a new column "VORP+PER" that sums VORP and PER
+  nba_merge <- nba_merge %>%
+    mutate(VORP_PER = as.numeric(VORP) + as.numeric(PER)) # Convert to numeric and sum
+  
+  return(nba_merge)
 }
 
 # Example usage: Get the cleaned dataset for the 2023 NBA season
@@ -429,6 +345,110 @@ nba_data_2023 <- get_cleaned_nba_stats(2023)
 
 # View the first few rows of the cleaned dataset
 head(nba_data_2023)
+
+
+```
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(rvest)
+
+# Function to get NBA totals stats for a specified year
+get_nba_totals_stats <- function(year) {
+  url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, "_totals.html")
+  webpage <- read_html(url)
+  totals_stats_table <- webpage %>%
+    html_node("table#totals_stats") %>%
+    html_table(fill = TRUE)
+
+  # Clean up column names
+  colnames(totals_stats_table) <- make.names(colnames(totals_stats_table), unique = TRUE)
+
+  # Clean the data
+  totals_stats_table <- totals_stats_table %>%
+    filter(!is.na(Player) & Player != "Player")  # Ensure no NA or duplicate header rows
+  
+  return(totals_stats_table)
+}
+
+# Function to get NBA advanced stats for a specified year
+get_nba_advanced_stats <- function(year) {
+  url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, "_advanced.html")
+  webpage <- read_html(url)
+  advanced_stats_table <- webpage %>%
+    html_node("table#advanced_stats") %>%
+    html_table(fill = TRUE)
+
+  # Clean up column names
+  colnames(advanced_stats_table) <- make.names(colnames(advanced_stats_table), unique = TRUE)
+
+  # Clean the data
+  advanced_stats_table <- advanced_stats_table %>%
+    filter(!is.na(Player) & Player != "Player")  # Ensure no NA or duplicate header rows
+  
+  return(advanced_stats_table)
+}
+
+# Function to merge NBA totals and advanced stats for a specified year
+get_cleaned_nba_stats <- function(year) {
+  # Fetch totals and advanced stats
+  nba_totals <- get_nba_totals_stats(year)
+  nba_advanced <- get_nba_advanced_stats(year)
+
+  # Identify common columns between the two datasets
+  common_columns <- intersect(names(nba_totals), names(nba_advanced))
+
+  # Check if the merge columns exist in both datasets
+  merge_columns <- c("Player", "Pos", "Tm", "G", "MP")
+  available_merge_columns <- intersect(merge_columns, common_columns)
+
+  if (length(available_merge_columns) == 0) {
+    stop("No valid columns to merge. Ensure that 'Player', 'Pos', 'Tm', 'G', 'MP' exist in both datasets.")
+  }
+
+  # Merge the datasets on the common columns
+  nba_merge <- merge(nba_totals, nba_advanced, by = available_merge_columns, all.x = TRUE, all.y = TRUE)
+
+  # Remove players whose team is "2Tm" or "3Tm" (case insensitive)
+  nba_merge <- nba_merge %>%
+    filter(!grepl("^[23]Tm$", Tm, ignore.case = TRUE))  # Remove rows with Tm as "2Tm" or "3Tm"
+
+  # Merge columns Tm and Team into one column
+  if ("Tm" %in% names(nba_merge)) {
+    nba_merge <- nba_merge %>%
+      mutate(Team = coalesce(Tm, Team)) %>%  # Merge Tm into Team
+      select(-Tm)  # Remove the old Tm column
+  }
+
+  # Merge columns Rk.x and Rk.y
+  if ("Rk.x" %in% names(nba_merge) & "Rk.y" %in% names(nba_merge)) {
+    # Convert Rk.x and Rk.y to the same type
+    nba_merge <- nba_merge %>%
+      mutate(Rk = coalesce(as.character(Rk.x), as.character(Rk.y))) %>%
+      select(-Rk.x, -Rk.y)  # Remove the old Rk.x and Rk.y columns
+  }
+
+  # Remove column age.y, keep age.x
+  if ("age.y" %in% names(nba_merge)) {
+    nba_merge <- nba_merge %>%
+      select(-age.y)  # Remove age.y
+  }
+
+  # Remove the columns named "X" and "X.1" if they exist
+  nba_merge <- nba_merge %>%
+    select(-any_of(c("X", "X.1")), everything())  # Remove the "X" and "X.1" columns if they exist
+
+  return(nba_merge)
+}
+
+# Example usage: Get the cleaned dataset for the 2023 NBA season
+nba_data_2023 <- get_cleaned_nba_stats(2023)
+
+# View the first few rows of the cleaned dataset
+head(nba_data_2023)
+
+
 
 
 ```
@@ -449,6 +469,7 @@ nba_data_2015 <-get_cleaned_nba_stats(2015)
 # Save your dataframe as a CSV file
 write.csv(nba_roster2, file = "generalstats.csv", row.names = FALSE)
 write.csv(AO_nba_advanced_stats2, file = "advancedstats.csv", row.names = FALSE)
+write.csv(nba_data_2023, file = "nba2023.csv", row.names = FALSE)
 getwd()
 
 ```
