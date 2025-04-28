@@ -14,6 +14,8 @@ Load necessary libraries
 library(rvest)
 library(dplyr)
 library(tidyverse)
+library(httr)
+
 ```
 
 Function to get NBA roster for a specified year
@@ -62,8 +64,6 @@ removing observations with missing data from the dataset, using the function "na
  
 ```{r}
 
-
-
 ```
 
 
@@ -91,12 +91,19 @@ get_nba_totals_stats <- function(year) {
 }
 
 
-#get NBA advanced stats
 get_nba_advanced_stats <- function(year) {
   url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, "_advanced.html")
-  webpage <- read_html(url)
+  
+  # Fetch webpage
+  webpage <- tryCatch({
+    read_html(GET(url, user_agent("Mozilla/5.0")))
+  }, error = function(e) {
+    stop("Error fetching webpage: ", e$message)
+  })
+  
+  # Extract table with updated ID
   advanced_stats_table <- webpage %>%
-    html_node("table#advanced_stats") %>%
+    html_node("table#advanced") %>%  # Updated selector to match the new ID
     html_table(fill = TRUE)
   
   # Clean up column names
@@ -104,10 +111,11 @@ get_nba_advanced_stats <- function(year) {
   
   # Clean the data
   advanced_stats_table <- advanced_stats_table %>%
-    filter(!is.na(Player) & Player != "Player") # Ensure no NA or duplicate header rows
+    filter(!is.na(Player) & Player != "Player")  # Remove NA rows and duplicate headers
   
   return(advanced_stats_table)
 }
+
 
 ```
 
@@ -117,14 +125,57 @@ get_nba_advanced_stats <- function(year) {
 
 Official Cleaning Function that works as of 10/29/2024
 ```{r}
-# Function to merge NBA totals and advanced stats for a specified year
+
+#Get NBA Totals Statistics
+get_nba_totals_stats <- function(year) {
+  url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, "_totals.html")
+  webpage <- read_html(url)
+  totals_stats_table <- webpage %>%
+    html_node("table#totals_stats") %>%
+    html_table(fill = TRUE)
+
+  # Clean up column names
+  colnames(totals_stats_table) <- make.names(colnames(totals_stats_table), unique = TRUE)
+
+  # Clean the data
+  totals_stats_table <- totals_stats_table %>%
+    filter(!is.na(Player) & Player != "Player")  # Ensure no NA or duplicate header rows
+  
+  return(totals_stats_table)
+}
+
+
+get_nba_advanced_stats <- function(year) {
+  url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, "_advanced.html")
+  
+  # Fetch webpage
+  webpage <- tryCatch({
+    read_html(GET(url, user_agent("Mozilla/5.0")))
+  }, error = function(e) {
+    stop("Error fetching webpage: ", e$message)
+  })
+  
+  # Extract table with updated ID
+  advanced_stats_table <- webpage %>%
+    html_node("table#advanced") %>%  # Updated selector to match the new ID
+    html_table(fill = TRUE)
+  
+  # Clean up column names
+  colnames(advanced_stats_table) <- make.names(colnames(advanced_stats_table), unique = TRUE)
+  
+  # Clean the data
+  advanced_stats_table <- advanced_stats_table %>%
+    filter(!is.na(Player) & Player != "Player")  # Remove NA rows and duplicate headers
+  
+  return(advanced_stats_table)
+}
+
 get_cleaned_nba_stats <- function(year) {
   # Fetch totals and advanced stats
   nba_totals <- get_nba_totals_stats(year)
-  
   nba_advanced <- get_nba_advanced_stats(year)
 
-  # Print to check datasets
+  # Print to check datasets (Optional)
   print("NBA Totals:")
   print(head(nba_totals))
   print("NBA Advanced:")
@@ -146,6 +197,35 @@ get_cleaned_nba_stats <- function(year) {
   # Debug: Show merged data sample
   print("Merged Data Sample:")
   print(head(nba_merge))
+  
+  # Check column names to confirm 'Team' exists
+  print("Column Names Before Renaming:")
+  print(colnames(nba_merge))
+
+  # Clean 'Team' column: rename 'Tm' to 'Team' if present
+  if ("Tm" %in% colnames(nba_merge)) {
+    nba_merge <- nba_merge %>%
+      rename(Team = Tm)
+  }
+
+  # Debug: Show column names after renaming
+  print("Column Names After Renaming 'Tm' to 'Team':")
+  print(colnames(nba_merge))
+
+  # Handle duplicate columns like Team.x, Team.y, Awards.x, Awards.y
+  duplicate_columns <- colnames(nba_merge)[grepl("\\.x$", colnames(nba_merge))]
+
+  for (col in duplicate_columns) {
+    # Extract the base name of the column (e.g., "Team" from "Team.x")
+    base_col <- sub("\\.x$", "", col)
+    
+    # Merge the .x and .y columns into one
+    if (paste0(base_col, ".y") %in% colnames(nba_merge)) {
+      nba_merge <- nba_merge %>%
+        mutate(!!base_col := coalesce(get(col), get(paste0(base_col, ".y")))) %>%
+        select(-all_of(c(col, paste0(base_col, ".y"))))  # Drop the old columns
+    }
+  }
 
   # Remove players whose team is "TOT", "2Tm", or "3Tm"
   nba_merge <- nba_merge %>%
@@ -155,19 +235,19 @@ get_cleaned_nba_stats <- function(year) {
   nba_merge <- nba_merge %>%
     filter(!grepl("-", Pos))
 
-  # Remove the 'Tm', 'X', and 'X.1' columns if they exist
-  columns_to_remove <- c("Tm", "X", "X.1")
+  # Remove the 'X', 'X.1' columns if they exist
+  columns_to_remove <- c("X", "X.1")
   nba_merge <- nba_merge %>%
     select(-any_of(columns_to_remove))  # Remove specified columns if they exist
 
-  # Merge Rk.x and Rk.y
+  # Merge 'Rk.x' and 'Rk.y' columns
   if ("Rk.x" %in% names(nba_merge) & "Rk.y" %in% names(nba_merge)) {
     nba_merge <- nba_merge %>%
       mutate(Rk = coalesce(as.character(Rk.x), as.character(Rk.y))) %>%
       select(-Rk.x, -Rk.y)
   }
 
-  # Merge Age columns
+  # Merge 'Age.x' and 'Age.y' columns
   if ("Age.x" %in% names(nba_merge) & "Age.y" %in% names(nba_merge)) {
     nba_merge <- nba_merge %>%
       mutate(Age = coalesce(as.numeric(Age.x), as.numeric(Age.y))) %>%
@@ -179,6 +259,7 @@ get_cleaned_nba_stats <- function(year) {
   nba_merge <- nba_merge %>%
     select(all_of(column_order), everything())
 
+  # Return the cleaned and merged dataset
   return(nba_merge)
 }
 
@@ -196,6 +277,44 @@ head(nba_data_2013)
 nba_data_2022 <-get_cleaned_nba_stats(2022)
 nba_data_2010 <-get_cleaned_nba_stats(2010)
 nba_data_2015 <-get_cleaned_nba_stats(2015)
+nba_data_2011<-get_cleaned_nba_stats(2011)
+nba_data_2012<-get_cleaned_nba_stats(2012)
+nba_data_2009<-get_cleaned_nba_stats(2009)
+nba_data_2008<-get_cleaned_nba_stats(2008)
+nba_data_2007<-get_cleaned_nba_stats(2007)
+nba_data_2006<-get_cleaned_nba_stats(2006)
+nba_data_2005<-get_cleaned_nba_stats(2005)
+nba_data_2004<-get_cleaned_nba_stats(2004)
+nba_data_2003<-get_cleaned_nba_stats(2003)
+nba_data_2002<-get_cleaned_nba_stats(2002)
+nba_data_2001<-get_cleaned_nba_stats(2001)
+nba_data_2000<-get_cleaned_nba_stats(2000)
+
+
+
+nba_data_1999<-get_cleaned_nba_stats(1999)
+nba_data_1998<-get_cleaned_nba_stats(1998)
+nba_data_1997<-get_cleaned_nba_stats(1997)
+nba_data_1996<-get_cleaned_nba_stats(1996)
+nba_data_1995<-get_cleaned_nba_stats(1995)
+nba_data_1994<-get_cleaned_nba_stats(1994)
+nba_data_1993<-get_cleaned_nba_stats(1993)
+nba_data_1992<-get_cleaned_nba_stats(1992)
+nba_data_1991<-get_cleaned_nba_stats(1991)
+nba_data_1990<-get_cleaned_nba_stats(1990)
+nba_data_1989<-get_cleaned_nba_stats(1989)
+nba_data_1988<-get_cleaned_nba_stats(1988)
+nba_data_1987<-get_cleaned_nba_stats(1987)
+nba_data_1986<-get_cleaned_nba_stats(1986)
+nba_data_1985<-get_cleaned_nba_stats(1985)
+nba_data_1984<-get_cleaned_nba_stats(1984)
+nba_data_1983<-get_cleaned_nba_stats(1983)
+nba_data_1982<-get_cleaned_nba_stats(1982)
+nba_data_1981<-get_cleaned_nba_stats(1981)
+nba_data_1980<-get_cleaned_nba_stats(1980)
+
+readLines("https://www.basketball-reference.com/teams/LAL/2023.html", n = 1)
+
 ```
 
 
@@ -212,5 +331,8 @@ write.csv(nba_data_2013, file = "nba2013.csv", row.names = FALSE)
 getwd()
 
 ```
+
+
+
 
 
